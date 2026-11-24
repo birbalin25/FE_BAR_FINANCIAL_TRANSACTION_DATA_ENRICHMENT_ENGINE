@@ -22,6 +22,8 @@
   "lakebase_pg_database": "databricks_postgres",
   "lakebase_schema": "febar_ops",
   "genie_space_id": "01f1e7b38d1e1b228419f9357e1ea6c5",
-  "app_name": null,
-  "genie_space_url": "https://fevm-serverless-stable-iczfn0.cloud.databricks.com/genie/rooms/01f1e7b38d1e1b228419f9357e1ea6c5"
+  "app_name": "febar-enrichment-app",
+  "genie_space_url": "https://fevm-serverless-stable-iczfn0.cloud.databricks.com/genie/rooms/01f1e7b38d1e1b228419f9357e1ea6c5",
+  "app_url": "https://febar-enrichment-app-7474646684279456.aws.databricksapps.com",
+  "app_service_principal_client_id": "3bd563db-fee1-4bfa-b642-3433bdb76267"
 }

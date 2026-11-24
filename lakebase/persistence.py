@@ -49,17 +49,21 @@ def _get_user() -> str:
 
 
 def _get_token() -> str:
+    # 1) explicitly injected password (if the platform provides one)
     if os.environ.get("PGPASSWORD"):
         return os.environ["PGPASSWORD"]
-    # In an App, prefer the SDK (no CLI available there).
+    # 2) Databricks App / runtime: mint a Lakebase credential via the REST API
+    #    (POST /api/2.0/postgres/credentials) using the SDK's authenticated client.
     try:
         from databricks.sdk import WorkspaceClient
         w = WorkspaceClient()
-        cred = w.postgres.generate_database_credential(request_id=str(time.time()),
-                                                       instance_names=[])  # type: ignore
-        return cred.token  # pragma: no cover (app runtime)
+        resp = w.api_client.do("POST", "/api/2.0/postgres/credentials",
+                               body={"endpoint": ENDPOINT})
+        if resp and resp.get("token"):
+            return resp["token"]
     except Exception:
         pass
+    # 3) local dev: the CLI
     out = subprocess.run(
         ["databricks", "postgres", "generate-database-credential", ENDPOINT,
          "--profile", PROFILE, "-o", "json"],

@@ -112,7 +112,7 @@ together for the payments operations team. MLflow tracks and evaluates the GenAI
 | **MLflow** | Track GenAI calls + evaluate against ground truth | ✅ Implemented (experiment logged) |
 | **Lakebase** (Autoscaling Postgres) | Operational serving: results, confirmed mappings, review queue, feedback | ✅ Implemented & executed |
 | **Genie** | Natural-language analytics over governed Gold tables | ✅ Space created & queried |
-| **Databricks Apps** | Business-facing app: enrichment, dashboard, manual review, Genie access | ⏳ Phase 5 |
+| **Databricks Apps** | Business-facing app: enrichment, dashboard, manual review, Genie access | ✅ Deployed, running & executed |
 
 ## 6. Repository Structure
 
@@ -280,10 +280,52 @@ tables are the governed analytics surface Genie queries.
   `SELECT COUNT(*) ... WHERE decision='MATCHED'` → **298**).
 
 ## 16. Databricks App Deployment
-_⏳ Phase 5 — see `app/` and `app.yaml`._
+
+A **Streamlit** Databricks App (`febar-enrichment-app`,
+`https://febar-enrichment-app-7474646684279456.aws.databricksapps.com`) provides four sections:
+**Merchant Enrichment** (submit/select a descriptor → full workflow → entities, top-10 candidates,
+decision, confidence, explanation), **Operations Dashboard** (live Lakebase metrics — never
+hard-coded), **Manual Review** (approve/reject ambiguous transactions, persisting decisions and
+confirming reusable mappings), and **Genie Analytics** (link to the configured space). The app
+reuses the exact same `common.ops.enrich_and_persist` pipeline as the batch/eval code.
+
+**Deploy:**
+```bash
+databricks apps create febar-enrichment-app --profile fevm
+# attach the Lakebase resource + grant the app service principal (see lakebase/ + scripts/)
+databricks sync . /Workspace/Users/<you>/febar-app-src --profile fevm
+databricks apps deploy febar-enrichment-app --source-code-path /Workspace/Users/<you>/febar-app-src --profile fevm
+```
+
+**Authentication:** app service principal (`Config()`); Lakebase token minted in-app via
+`POST /api/2.0/postgres/credentials`; FMAPI/Vector Search via the SP OAuth token. The app SP was
+granted `febar_ops` schema privileges, UC `SELECT`, and warehouse `CAN_USE`.
+
+**Evidence:** [`evidence/app_execution.md`](evidence/app_execution.md) — deployment success, and proof
+the **deployed app executed the full workflow server-side** (self-test row written to Lakebase as the
+SP with `source=enrichment_workflow` and the LLM-extracted entities).
 
 ## 17. End-to-End Demonstration
-_⏳ Phase 5 — demonstrated via the deployed app._
+
+The complete business scenario (spec §15), all with real components:
+
+1. Transaction arrives: `SQ *SUNSHINE COFFEE ROASTERS LARCHMONT NY`.
+2. **Lakeflow** ingests it (bronze → silver → gold).
+3. **Unity Catalog** stores governed transaction + merchant datasets.
+4. **LLM extracts:** `{facilitator: Square, merchant: Sunshine Coffee Roasters, city: Larchmont, state: NY}`.
+5. **Vector Search** returns the top-10 candidates (the Larchmont store ranks #1, score 0.86).
+6. **LLM judge** returns `MATCHED → M00028` (location disambiguates same-name stores).
+7. Result **persisted in Lakebase** (`merchant_enrichment_results`).
+8. Result **published to Unity Catalog Gold** via `sync_to_uc.py` (`gold_enrichment_results`).
+9. The **Databricks App** displays the enrichment result.
+10. A business user opens **Genie** and asks "How many transactions were successfully enriched?".
+11. Genie generates `SELECT COUNT(*) ... WHERE decision='MATCHED'` and returns **298**.
+12. A repeated equivalent descriptor **reuses the confirmed mapping** in Lakebase (`source=mapping_reuse`).
+13. An ambiguous descriptor (`PAYPAL *TACO FIESTA`) enters the **manual review queue**.
+14. An analyst **approves** a merchant in the app.
+15. The decision is **persisted and the mapping confirmed** for future reuse/analytics.
+
+Steps 1–8 and 12–15 are captured in `evidence/`; step 10–11 in `genie/evidence/`.
 
 ## 18. Evaluation Results
 
@@ -317,12 +359,33 @@ embeddings `databricks-gte-large-en`), logged to MLflow and written to
 | Evaluation results | [`evidence/evaluation_results.md`](evidence/evaluation_results.md) ✅ |
 | Lakebase operations | [`evidence/lakebase_execution.md`](evidence/lakebase_execution.md) ✅ |
 | Genie queries & results | [`genie/evidence/genie_query_results.md`](genie/evidence/genie_query_results.md) ✅ |
-| App execution | `evidence/app_execution.md` ⏳ |
+| App execution | [`evidence/app_execution.md`](evidence/app_execution.md) ✅ |
 
 ## 20. Known Limitations and Future Enhancements
 
-- Prototype scope: data is synthetic; volumes are illustrative.
-- See each phase section for component-specific limitations as they are implemented.
+**Prototype limitations**
+- Data is fully synthetic (seed=42); the business assumptions (§2) are illustrative, not benchmarks.
+- Payment-facilitator and location extraction accuracies are reported conservatively (a correct
+  `null` is scored as wrong when the descriptor omits the field; unmapped facilitator abbreviations
+  like `PYPL`/`STR`/`VEN`). Matching quality (precision/false-positives) is the business-critical
+  metric and is excellent.
+- `gold_merchant_metrics.unmatched_transactions` / `ambiguous_transactions` are 0 at the per-merchant
+  grain (those decisions aren't attributable to a specific merchant); the global breakdown lives in
+  `gold_enrichment_results`.
+- Lakebase → UC Gold sync is a manually-triggered incremental job (`sync_to_uc.py`), as allowed for
+  the prototype; production would schedule it (or use Lakebase CDC to UC).
+- The Databricks App UI is behind Databricks OAuth SSO; interactive use requires sign-in. Server-side
+  execution is proven via the in-app self-test (see `evidence/app_execution.md`).
+- The LLM judge runs two model calls per uncached transaction (~4–5 s end-to-end); confirmed-mapping
+  reuse eliminates both for repeat descriptors.
+
+**Future enhancements**
+- Schedule the pipeline + sync; add streaming ingestion from a real card-network feed.
+- Fine-tune / few-shot the extractor for facilitator abbreviations; add a calibration step for
+  confidence thresholds per merchant category.
+- Add human-in-the-loop active learning: feed analyst_feedback back into evaluation and prompt tuning.
+- Scale Vector Search to storage-optimized endpoints for millions of merchants.
+- Add row/column-level UC governance and PII masking for production data.
 
 ---
 

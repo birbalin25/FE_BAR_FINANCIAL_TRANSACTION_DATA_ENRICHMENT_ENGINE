@@ -12,6 +12,7 @@ Reuses the exact same enrichment + persistence modules as the batch/evaluation c
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -29,10 +30,30 @@ RESOURCES = json.loads((Path(__file__).resolve().parent.parent / "config" / "res
 
 st.set_page_config(page_title="Merchant Enrichment Engine", page_icon="🏦", layout="wide")
 
+# Optional in-app self-test: when FEBAR_APP_SELFTEST=1, the deployed app runs one
+# real enrichment on startup (as the app service principal) and persists it to
+# Lakebase. Used to capture evidence that the DEPLOYED app executes the full
+# workflow end-to-end. Idempotent (fixed transaction_id). Off by default.
+if os.environ.get("FEBAR_APP_SELFTEST") == "1" and "_selftest_done" not in st.session_state:
+    try:
+        from common.ops import enrich_and_persist as _ep
+        st.session_state["_selftest"] = _ep(
+            "SQ *SUNSHINE COFFEE ROASTERS LARCHMONT NY", transaction_id="APP-SELFTEST")
+    except Exception as _e:  # noqa: BLE001
+        st.session_state["_selftest_err"] = repr(_e)
+    st.session_state["_selftest_done"] = True
+
 
 @st.cache_resource
 def _bootstrap():
-    lb.init_schema()
+    # The operational schema is provisioned by the project setup. Try to ensure it
+    # (useful when the app SP owns it) but never crash the app if it already exists
+    # and the SP lacks CREATE — the tables are already present and granted.
+    try:
+        lb.init_schema()
+    except Exception:
+        # verify we can at least reach the operational tables
+        lb.q("SELECT 1 FROM merchant_enrichment_results LIMIT 1", fetch=True)
     return True
 
 

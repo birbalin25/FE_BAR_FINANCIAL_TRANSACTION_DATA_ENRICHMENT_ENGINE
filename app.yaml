@@ -8,4 +8,7 @@ command: ["streamlit", "run", "app/app.py"]
 env:
   # SQL warehouse used for UC reads (e.g. "pick an existing transaction").
   - name: DATABRICKS_WAREHOUSE_ID
-    valueFrom: sql_warehouse
+    value: "e9846c65aa767493"
+  # Set to "1" to run a one-time in-app enrichment self-test on startup (evidence capture).
+  - name: FEBAR_APP_SELFTEST
+    value: "0"

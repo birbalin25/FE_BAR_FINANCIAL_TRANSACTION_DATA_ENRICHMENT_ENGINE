@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Local generated data (regenerated deterministically via script; evidence samples are committed)
+data_generation/output/*.csv
+data_generation/output/*.parquet
+
+# Databricks
+.databricks/
+*.pem
+
+# Secrets / credentials - NEVER commit
+.env
+*.token
+secrets.*
+*credential*
+
+# OS
+.DS_Store

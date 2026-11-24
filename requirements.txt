@@ -1,0 +1,19 @@
+# Core
+pyyaml>=6.0
+databricks-sdk>=0.40.0
+databricks-sql-connector>=3.6.0
+
+# GenAI / LLM access (OpenAI-compatible client against Databricks FMAPI)
+openai>=1.40.0
+
+# Vector Search client
+databricks-vectorsearch>=0.40
+
+# MLflow tracking + GenAI evaluation
+mlflow>=2.19.0
+
+# Lakebase / Postgres connectivity
+psycopg[binary]>=3.2.0
+
+# Data handling (synthetic data generation + evaluation)
+pandas>=2.0.0

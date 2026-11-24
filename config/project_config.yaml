@@ -1,0 +1,57 @@
+# ============================================================================
+# Financial Transaction Data Enrichment Engine - Central Configuration
+# ----------------------------------------------------------------------------
+# Every component reads its parameters from here. Nothing is hard-coded in the
+# component scripts. Override via environment variables (see common/config.py).
+# ============================================================================
+
+# --- Databricks workspace / auth ------------------------------------------
+databricks:
+  profile: fevm
+  host: https://fevm-serverless-stable-iczfn0.cloud.databricks.com
+  warehouse_id: e9846c65aa767493        # "Serverless Starter Warehouse"
+
+# --- Unity Catalog governance ---------------------------------------------
+unity_catalog:
+  catalog: serverless_stable_iczfn0_catalog
+  schema: febar
+  volume: raw_landing                   # UC Volume where synthetic raw files land
+
+# --- Foundation models (GenAI) --------------------------------------------
+models:
+  # Chat model used for entity recognition AND the LLM judge (structured output)
+  chat_endpoint: databricks-claude-sonnet-5-5
+  # Embedding model used for Vector Search managed embeddings
+  embedding_endpoint: databricks-gte-large-en
+
+# --- Vector Search ---------------------------------------------------------
+vector_search:
+  endpoint_name: febar_vs_endpoint
+  index_name: serverless_stable_iczfn0_catalog.febar.merchants_vs_index
+  source_table: serverless_stable_iczfn0_catalog.febar.silver_merchants_embedding
+  primary_key: merchant_id
+  embedding_source_column: embedding_text
+  top_k: 10
+
+# --- Lakebase (operational Postgres) --------------------------------------
+lakebase:
+  instance_name: febar-lakebase
+  capacity: CU_1
+  database: databricks_postgres        # default logical DB on the instance
+  app_schema: febar_ops                # schema that holds operational tables
+
+# --- Genie space -----------------------------------------------------------
+genie:
+  space_title: "Merchant Enrichment Analytics"
+  description: "Natural-language analytics over merchant enrichment outcomes for Payments Operations."
+
+# --- Databricks App --------------------------------------------------------
+app:
+  name: febar-enrichment-app
+
+# --- Reproducibility -------------------------------------------------------
+data_generation:
+  random_seed: 42
+  n_merchants: 2500
+  n_transactions: 8000
+  n_eval_transactions: 400              # ground-truth evaluation subset

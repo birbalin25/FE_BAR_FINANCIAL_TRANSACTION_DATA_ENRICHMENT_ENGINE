@@ -1,0 +1,18 @@
+{
+  "_comment": "Live Databricks resource identifiers created by this project. Updated as resources are provisioned. No secrets.",
+  "workspace_host": "https://fevm-serverless-stable-iczfn0.cloud.databricks.com",
+  "profile": "fevm",
+  "catalog": "serverless_stable_iczfn0_catalog",
+  "schema": "febar",
+  "warehouse_id": "e9846c65aa767493",
+  "volume": "raw_landing",
+  "lakeflow_pipeline_id": "1cfd8e1e-6aaf-4e97-bd15-5ef140508ad5",
+  "lakeflow_pipeline_name": "febar_enrichment_pipeline",
+  "chat_endpoint": "databricks-claude-sonnet-5-5",
+  "embedding_endpoint": "databricks-gte-large-en",
+  "vector_search_endpoint": null,
+  "vector_search_index": null,
+  "lakebase_instance": null,
+  "genie_space_id": null,
+  "app_name": null
+}

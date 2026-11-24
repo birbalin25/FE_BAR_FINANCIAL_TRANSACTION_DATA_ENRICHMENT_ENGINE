@@ -1,0 +1,11 @@
+# Databricks App configuration (Streamlit).
+# The app source is the repository root so the app can import the shared
+# enrichment / persistence modules (common/, entity_recognition/, vector_search/,
+# entity_linkage/, lakebase/). Resources (Lakebase, SQL warehouse) are attached to
+# the app and their connection values are injected as environment variables.
+command: ["streamlit", "run", "app/app.py"]
+
+env:
+  # SQL warehouse used for UC reads (e.g. "pick an existing transaction").
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql_warehouse

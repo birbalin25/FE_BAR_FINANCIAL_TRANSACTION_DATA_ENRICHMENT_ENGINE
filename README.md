@@ -107,11 +107,11 @@ together for the payments operations team. MLflow tracks and evaluates the GenAI
 |---|---|---|
 | **Lakeflow** (Spark Declarative Pipelines) | Ingest + transform raw data into Bronze/Silver/Gold | ✅ Implemented & executed |
 | **Unity Catalog** | Governance: catalog/schema, table + column descriptions, Gold analytics tables | ✅ Implemented |
-| **GenAI (Foundation Models)** | Entity recognition + LLM judge via `databricks-claude-sonnet-5-5` | ⏳ Phase 2 |
-| **Vector Search** | Retrieve top-10 merchant candidates (`databricks-gte-large-en` embeddings) | ⏳ Phase 2 |
-| **MLflow** | Track GenAI calls + evaluate against ground truth | ⏳ Phase 2 / 6 |
-| **Lakebase** (Postgres OLTP) | Operational serving: results, confirmed mappings, review queue, feedback | ⏳ Phase 3 |
-| **Genie** | Natural-language analytics over governed Gold tables | ⏳ Phase 4 |
+| **GenAI (Foundation Models)** | Entity recognition + LLM judge via `databricks-claude-sonnet-5-5` | ✅ Implemented & evaluated |
+| **Vector Search** | Retrieve top-10 merchant candidates (`databricks-gte-large-en` embeddings) | ✅ Implemented (Recall@10 = 99.2%) |
+| **MLflow** | Track GenAI calls + evaluate against ground truth | ✅ Implemented (experiment logged) |
+| **Lakebase** (Autoscaling Postgres) | Operational serving: results, confirmed mappings, review queue, feedback | ✅ Implemented & executed |
+| **Genie** | Natural-language analytics over governed Gold tables | ✅ Space created & queried |
 | **Databricks Apps** | Business-facing app: enrichment, dashboard, manual review, Genie access | ⏳ Phase 5 |
 
 ## 6. Repository Structure
@@ -214,38 +214,109 @@ python3 lakeflow/apply_governance.py      # apply UC column comments (idempotent
 updates `COMPLETED`, all 9 tables populated (8,000 / 2,220 / 4,296 rows), 0 data-quality violations.
 
 ## 11. Merchant Entity Recognition
-_⏳ Phase 2 — see `entity_recognition/`._
+
+`entity_recognition/entity_extraction.py` calls `databricks-claude-sonnet-5-5` to parse a raw
+descriptor into a validated schema: `payment_facilitator`, `merchant_name`, `city`, `state`,
+`country`, `store_identifier`, `order_identifier`. The response is validated and missing/malformed
+output degrades gracefully to nulls. Example:
+
+```
+"SQ *SUNSHINE COFFEE ROASTERS LARCHMONT NY"  ->
+  {"payment_facilitator":"Square","merchant_name":"Sunshine Coffee Roasters",
+   "city":"Larchmont","state":"NY","country":"USA","store_identifier":null,"order_identifier":null}
+```
+
+Measured merchant-name extraction accuracy: **89%** (see `evidence/evaluation_results.md`).
 
 ## 12. Vector Search and LLM Judge
-_⏳ Phase 2 — see `vector_search/` and `entity_linkage/`._
+
+- **Embedding strategy:** `silver_merchants`/`gold_merchants` builds an `embedding_text`
+  (name + aliases + location + category). A Delta Sync index (`merchants_vs_index`) with managed
+  `databricks-gte-large-en` embeddings is built over a CDF-enabled source table (2,425 merchants).
+- **Retrieval:** `vector_search/retrieve_candidates.py` queries the index with a text query built
+  from the extracted entities and returns the **top-10** candidates with similarity scores.
+  **Recall@10 = 99.2%** against ground truth.
+- **LLM judge** (`entity_linkage/llm_judge.py`): given descriptor + entities + top-10 candidates,
+  returns `MATCHED` / `NO_MATCH` / `AMBIGUOUS` with confidence, a reason, and alternatives. It never
+  forces a match, weighs name AND location together, uses location to disambiguate same-name chains,
+  and can only select a merchant_id from the retrieved candidates. **Matching precision = 100%,
+  false-positive rate = 0%** (the spec's priority risk metric).
+
+Evidence: [`evidence/enrichment_examples.md`](evidence/enrichment_examples.md) shows live
+MATCHED / NO_MATCH / AMBIGUOUS examples with entities, candidates, and judge decisions.
 
 ## 13. Lakebase Operational Serving
-_⏳ Phase 3 — see `lakebase/`._
+
+Lakebase (Autoscaling Postgres project `febar-lakebase`, schema `febar_ops`) backs the app's
+operational reads/writes via four tables: `merchant_enrichment_results`, `merchant_mapping`,
+`manual_review_queue`, `analyst_feedback` (DDL in `lakebase/create_tables.sql`).
+`lakebase/persistence.py` implements persistence, **confirmed-mapping reuse** (fingerprint key),
+the manual-review workflow, analyst feedback, and duplicate-submission handling. A high-confidence
+MATCHED result auto-confirms a reusable mapping; analyst approvals also create confirmed mappings.
+
+Evidence: [`evidence/lakebase_execution.md`](evidence/lakebase_execution.md) shows the live loop —
+`enrichment_workflow` → `mapping_reuse` → `analyst_confirmed` → `mapping_reuse`.
 
 ## 14. Unity Catalog Analytics
-_⏳ Phase 4 — Gold analytics tables populated from Lakebase via `lakebase/sync_to_uc.py`._
+
+`lakebase/sync_to_uc.py` implements an explicit, re-runnable sync (Postgres → UC Volume staging →
+Delta) producing `gold_enrichment_results` and `gold_merchant_metrics`;
+`evaluation/evaluate_enrichment.py` produces `gold_enrichment_quality_metrics`. These three Gold
+tables are the governed analytics surface Genie queries.
 
 ## 15. Genie Agent Configuration and Usage
-_⏳ Phase 4 — see `genie/`._
+
+- **Genie space:** `Merchant Enrichment Analytics`, id **`01f1e7b38d1e1b228419f9357e1ea6c5`**
+  (URL: `https://fevm-serverless-stable-iczfn0.cloud.databricks.com/genie/rooms/01f1e7b38d1e1b228419f9357e1ea6c5`).
+- **Created programmatically** via `genie/create_genie_space.py` (Genie Spaces REST API) with the three
+  Gold tables as data sources (with descriptions), business instructions (decision/metric definitions,
+  facilitator-vs-merchant, table routing), and the 8 required sample questions.
+- **Business definitions:** [`genie/genie_instructions.md`](genie/genie_instructions.md);
+  **sample questions:** [`genie/sample_questions.md`](genie/sample_questions.md);
+  **setup/access:** [`genie/setup_instructions.md`](genie/setup_instructions.md).
+- **Live execution evidence:** [`genie/evidence/genie_query_results.md`](genie/evidence/genie_query_results.md)
+  — 5 real NL questions executed via the Genie Conversation API, each with the generated SQL and actual
+  results (e.g. "How many transactions successfully enriched?" → Genie generated
+  `SELECT COUNT(*) ... WHERE decision='MATCHED'` → **298**).
 
 ## 16. Databricks App Deployment
-_⏳ Phase 5 — see `app/`._
+_⏳ Phase 5 — see `app/` and `app.yaml`._
 
 ## 17. End-to-End Demonstration
-_⏳ Phase 5._
+_⏳ Phase 5 — demonstrated via the deployed app._
 
 ## 18. Evaluation Results
-_⏳ Phase 6 — see `evidence/evaluation_results.md`._
+
+Full evaluation over **400 held-out ground-truth transactions** (chat `databricks-claude-sonnet-5-5`,
+embeddings `databricks-gte-large-en`), logged to MLflow and written to
+`gold_enrichment_quality_metrics`. Full detail: [`evidence/evaluation_results.md`](evidence/evaluation_results.md).
+
+| Metric | Value |
+|---|---|
+| Recall@10 (Vector Search) | **99.2%** |
+| Matching precision | **100%** |
+| Matching recall | **91.7%** |
+| False-positive rate | **0%** |
+| NO_MATCH classification accuracy | **100%** |
+| AMBIGUOUS classification accuracy | **98.8%** |
+| Merchant-name extraction accuracy | **89.2%** |
+| Enrichment success rate (auto-MATCHED) | **55%** |
+| Manual review rate | **23.5%** |
+
+> Payment-facilitator (43%) and location (53%) extraction accuracies are intentionally conservative:
+> the metric counts a correct `null` as wrong when the descriptor genuinely omits that field, and
+> penalizes unmapped facilitator abbreviations (e.g. `PYPL`, `STR`, `VEN`). Matching quality — which
+> drives the business outcome — is excellent (100% precision, 0% false positives).
 
 ## 19. Execution Evidence
 
 | Evidence | File |
 |---|---|
 | Lakeflow pipeline execution | [`evidence/pipeline_execution.md`](evidence/pipeline_execution.md) ✅ |
-| Enrichment examples (extraction + retrieval + judge) | `evidence/enrichment_examples.md` ⏳ |
-| Evaluation results | `evidence/evaluation_results.md` ⏳ |
-| Lakebase operations | `evidence/lakebase_execution.md` ⏳ |
-| Genie queries & results | `genie/evidence/genie_query_results.md` ⏳ |
+| Enrichment examples (extraction + retrieval + judge) | [`evidence/enrichment_examples.md`](evidence/enrichment_examples.md) ✅ |
+| Evaluation results | [`evidence/evaluation_results.md`](evidence/evaluation_results.md) ✅ |
+| Lakebase operations | [`evidence/lakebase_execution.md`](evidence/lakebase_execution.md) ✅ |
+| Genie queries & results | [`genie/evidence/genie_query_results.md`](genie/evidence/genie_query_results.md) ✅ |
 | App execution | `evidence/app_execution.md` ⏳ |
 
 ## 20. Known Limitations and Future Enhancements

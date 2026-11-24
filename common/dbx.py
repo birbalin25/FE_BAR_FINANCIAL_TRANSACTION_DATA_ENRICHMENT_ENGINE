@@ -16,11 +16,16 @@ All functions accept an optional `profile` (defaults to the configured one).
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import time
 from typing import Any
 
 from common.config import CFG
+
+
+def _cli_available() -> bool:
+    return shutil.which("databricks") is not None
 
 
 class DbxError(RuntimeError):
@@ -52,11 +57,36 @@ def workspace_token(profile: str | None = None) -> str:
     return json.loads(out)["access_token"]
 
 
+def _run_sql_sdk(statement: str, warehouse_id: str, catalog: str | None,
+                 schema: str | None) -> dict:
+    """SDK-based execution for runtimes without the CLI (e.g. Databricks Apps)."""
+    from databricks.sdk import WorkspaceClient
+    from databricks.sdk.service.sql import StatementState
+    w = WorkspaceClient()
+    resp = w.statement_execution.execute_statement(
+        warehouse_id=warehouse_id, statement=statement,
+        catalog=catalog, schema=schema, wait_timeout="50s",
+    )
+    # poll if needed
+    while resp.status and resp.status.state in (StatementState.PENDING, StatementState.RUNNING):
+        time.sleep(2)
+        resp = w.statement_execution.get_statement(resp.statement_id)
+    if resp.status and resp.status.state != StatementState.SUCCEEDED:
+        raise DbxError(f"SQL {resp.status.state}: "
+                       f"{resp.status.error.message if resp.status.error else resp}")
+    cols = [c.name for c in resp.manifest.schema.columns] if resp.manifest and resp.manifest.schema else []
+    data = (resp.result.data_array if resp.result else None) or []
+    return {"manifest": {"schema": {"columns": [{"name": c} for c in cols]}},
+            "result": {"data_array": data}, "status": {"state": "SUCCEEDED"}}
+
+
 def run_sql(statement: str, *, warehouse_id: str | None = None, catalog: str | None = None,
             schema: str | None = None, profile: str | None = None,
             wait: str = "50s", poll_timeout_s: int = 600) -> dict:
     """Execute a SQL statement and return the full API response (polling if needed)."""
     warehouse_id = warehouse_id or CFG.databricks["warehouse_id"]
+    if not _cli_available():
+        return _run_sql_sdk(statement, warehouse_id, catalog, schema)
     payload: dict[str, Any] = {
         "warehouse_id": warehouse_id,
         "statement": statement,

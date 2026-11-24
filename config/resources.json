@@ -10,9 +10,18 @@
   "lakeflow_pipeline_name": "febar_enrichment_pipeline",
   "chat_endpoint": "databricks-claude-sonnet-5-5",
   "embedding_endpoint": "databricks-gte-large-en",
-  "vector_search_endpoint": null,
-  "vector_search_index": null,
-  "lakebase_instance": null,
-  "genie_space_id": null,
-  "app_name": null
+  "vector_search_endpoint": "febar_vs_endpoint",
+  "vector_search_index": "serverless_stable_iczfn0_catalog.febar.merchants_vs_index",
+  "vector_search_index_pipeline_id": "0cd95724-7e7a-4d29-84cc-ece5077ba405",
+  "vector_search_source_table": "serverless_stable_iczfn0_catalog.febar.silver_merchants_embedding",
+  "lakebase_project": "febar-lakebase",
+  "lakebase_branch": "projects/febar-lakebase/branches/production",
+  "lakebase_endpoint": "projects/febar-lakebase/branches/production/endpoints/primary",
+  "lakebase_database_resource": "projects/febar-lakebase/branches/production/databases/databricks-postgres",
+  "lakebase_host": "ep-autumn-voice-d2vej5dk.database.us-east-1.cloud.databricks.com",
+  "lakebase_pg_database": "databricks_postgres",
+  "lakebase_schema": "febar_ops",
+  "genie_space_id": "01f1e7b38d1e1b228419f9357e1ea6c5",
+  "app_name": null,
+  "genie_space_url": "https://fevm-serverless-stable-iczfn0.cloud.databricks.com/genie/rooms/01f1e7b38d1e1b228419f9357e1ea6c5"
 }

@@ -108,6 +108,24 @@ CITIES = [
     ("Arlington", "VA", "22201"), ("Houston", "TX", "77002"), ("San Diego", "CA", "92101"),
     ("Sacramento", "CA", "95814"), ("Salt Lake City", "UT", "84101"), ("Las Vegas", "NV", "89101"),
     ("Kansas City", "MO", "64106"), ("St Louis", "MO", "63101"), ("Detroit", "MI", "48226"),
+    ("San Francisco", "CA", "94103"), ("Los Angeles", "CA", "90012"), ("San Antonio", "TX", "78205"),
+    ("Fort Worth", "TX", "76102"), ("El Paso", "TX", "79901"), ("Jacksonville", "FL", "32202"),
+    ("Tampa", "FL", "33602"), ("Indianapolis", "IN", "46204"), ("Fort Wayne", "IN", "46802"),
+    ("Milwaukee", "WI", "53202"), ("Omaha", "NE", "68102"), ("Lincoln", "NE", "68508"),
+    ("Albuquerque", "NM", "87102"), ("Santa Fe", "NM", "87501"), ("Portland", "ME", "04101"),
+    ("Providence", "RI", "02903"), ("Hartford", "CT", "06103"), ("New Haven", "CT", "06510"),
+    ("Baltimore", "MD", "21202"), ("Annapolis", "MD", "21401"), ("Wilmington", "DE", "19801"),
+    ("Louisville", "KY", "40202"), ("Lexington", "KY", "40507"), ("Columbia", "SC", "29201"),
+    ("Charleston", "SC", "29401"), ("Birmingham", "AL", "35203"), ("Montgomery", "AL", "36104"),
+    ("New Orleans", "LA", "70112"), ("Baton Rouge", "LA", "70801"), ("Little Rock", "AR", "72201"),
+    ("Tulsa", "OK", "74103"), ("Oklahoma City", "OK", "73102"), ("Wichita", "KS", "67202"),
+    ("Des Moines", "IA", "50309"), ("Boise", "ID", "83702"), ("Spokane", "WA", "99201"),
+    ("Eugene", "OR", "97401"), ("Reno", "NV", "89501"), ("Fresno", "CA", "93721"),
+    ("Long Beach", "CA", "90802"), ("Mesa", "AZ", "85201"), ("Aurora", "CO", "80010"),
+    ("Grand Rapids", "MI", "49503"), ("Akron", "OH", "44308"), ("Buffalo", "NY", "14202"),
+    ("Rochester", "NY", "14604"), ("Syracuse", "NY", "13202"), ("Newark", "NJ", "07102"),
+    ("Jersey City", "NJ", "07302"), ("Trenton", "NJ", "08608"), ("Scottsdale", "AZ", "85251"),
+    ("Chandler", "AZ", "85225"), ("Plano", "TX", "75074"), ("Durham", "NC", "27701"),
 ]
 
 STREETS = ["Main St", "Oak Ave", "Maple Dr", "Washington Blvd", "Market St", "Elm St",
@@ -240,10 +258,11 @@ def build_merchants() -> list[Merchant]:
 
     for core, cat, is_chain, domain in BRANDS:
         n_loc = 1 if not is_chain else random.randint(int(per_chain * 0.5), int(per_chain * 1.5))
-        chosen = random.sample(CITIES, min(n_loc, len(CITIES)))
-        # if we need more locations than distinct cities, allow repeats with suffixes
-        while len(chosen) < n_loc:
-            chosen.append(random.choice(CITIES))
+        # DISTINCT cities only: a chain has at most one branch per city, so that
+        # (merchant_name, city) uniquely identifies a branch and location can
+        # always disambiguate same-name chains. Caps chain size at len(CITIES).
+        n_loc = min(n_loc, len(CITIES))
+        chosen = random.sample(CITIES, n_loc)
         for city, state, postal in chosen:
             if len(merchants) >= N_MERCHANTS:
                 break

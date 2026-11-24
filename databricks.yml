@@ -1,0 +1,46 @@
+# Databricks Asset Bundle for the Financial Transaction Enrichment Engine.
+#
+# This bundle documents and (optionally) deploys the project's deployable assets:
+# the Lakeflow pipeline and the Databricks App. For the prototype, components were
+# provisioned and validated via the CLI (see README / config/resources.json); this
+# bundle captures them declaratively for reproducible redeployment.
+bundle:
+  name: febar-enrichment-engine
+
+variables:
+  catalog:
+    default: serverless_stable_iczfn0_catalog
+  schema:
+    default: febar
+  warehouse_id:
+    default: e9846c65aa767493
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://fevm-serverless-stable-iczfn0.cloud.databricks.com
+
+resources:
+  pipelines:
+    febar_enrichment_pipeline:
+      name: febar_enrichment_pipeline
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      channel: PREVIEW
+      libraries:
+        - glob:
+            include: lakeflow/*.sql
+
+  apps:
+    febar_enrichment_app:
+      name: febar-enrichment-app
+      source_code_path: .
+      description: "Merchant Enrichment Engine — operational app for Payments Operations."
+      resources:
+        - name: sql_warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE

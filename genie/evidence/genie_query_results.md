@@ -1,6 +1,6 @@
 # Phase 4 Evidence — Genie Space Natural-Language Queries
 
-_Captured: 2026-11-24 03:04:24 UTC_
+_Captured: 2026-11-25 18:44:44 UTC_
 
 Actual questions executed against the configured Genie space `01f1e7b38d1e1b228419f9357e1ea6c5` via the Genie Conversation API. 5/5 returned answers. Space URL: https://fevm-serverless-stable-iczfn0.cloud.databricks.com/genie/rooms/01f1e7b38d1e1b228419f9357e1ea6c5
 
@@ -13,7 +13,7 @@ Actual questions executed against the configured Genie space `01f1e7b38d1e1b2284
 **Status:** `COMPLETED`
 
 
-**Genie answer:** There are **298** transactions with decision **MATCHED**, which means **298** transactions have been successfully enriched. Based on the result shown, the successfully enriched transaction count is **298**.
+**Genie answer:** There are **299** successfully enriched transactions, based on transactions with decision = **MATCHED**. In this result set, the count of successfully enriched transactions is both the minimum and maximum value at **299** because the query returned **1** row.
 
 
 **Generated SQL:**
@@ -29,7 +29,7 @@ WHERE `decision` = 'MATCHED'
 
 | successfully_enriched_transactions |
 | --- |
-| 298 |
+| 299 |
 
 
 ---
@@ -39,22 +39,22 @@ WHERE `decision` = 'MATCHED'
 **Status:** `COMPLETED`
 
 
-**Genie answer:** **8.66336633663366%** of transactions remain unmatched, based on transactions with decision = **NO_MATCH** in `gold_enrichment_results`. This means the unmatched rate is about **8.66%** overall in the result shown.
+**Genie answer:** **8.64197530864198%** of transactions remain unmatched, based on transactions with decision = **NO_MATCH** in `gold_enrichment_results`. This means the unmatched rate is about **8.64%** across the full result set used in the query.
 
 
 **Generated SQL:**
 
 ```sql
-SELECT try_divide(100.0 * SUM(CASE WHEN `decision` = 'NO_MATCH' THEN 1 ELSE 0 END),COUNT(*)) AS `unmatched_percentage`
+SELECT try_divide(100.0 * SUM(CASE WHEN `decision` = 'NO_MATCH' THEN 1 ELSE 0 END),COUNT(*)) AS `unmatched_rate_percentage`
 FROM `serverless_stable_iczfn0_catalog`.`febar`.`gold_enrichment_results`
 ```
 
 
 **Query result:**
 
-| unmatched_percentage |
+| unmatched_rate_percentage |
 | --- |
-| 8.66336633663366 |
+| 8.64197530864198 |
 
 
 ---
@@ -64,13 +64,7 @@ FROM `serverless_stable_iczfn0_catalog`.`febar`.`gold_enrichment_results`
 **Status:** `COMPLETED`
 
 
-**Genie answer:** **Toast** generates the most ambiguous transactions with **6**. Examples include:
-- **Toast** — **6** ambiguous transactions
-- **Clover** — **4**
-- **Square** — **4**
-- **PayPal** — **2**
-- **Venmo** — **2**
-Across the 6 facilitators shown, ambiguous transaction counts range from **1** to **6**, with **Toast** clearly leading and **Clover** and **Square** tied just behind it.
+**Genie answer:** Would you prefer to see payment facilitators ranked by the percentage of ambiguous transactions instead of the total count?
 
 
 **Generated SQL:**
@@ -92,24 +86,24 @@ WITH facilitator_counts AS (
   FROM facilitator_counts
 )
 SELECT
+  `facilitator_rank`,
   `payment_facilitator`,
-  `ambiguous_transactions`,
-  `facilitator_rank`
+  `ambiguous_transactions`
 FROM ranked_facilitators
-ORDER BY `facilitator_rank` ASC, `payment_facilitator` ASC
+ORDER BY `facilitator_rank` ASC, `payment_facilitator` ASC;
 ```
 
 
 **Query result:**
 
-| payment_facilitator | ambiguous_transactions | facilitator_rank |
+| facilitator_rank | payment_facilitator | ambiguous_transactions |
 | --- | --- | --- |
-| Toast | 6 | 1 |
-| Clover | 4 | 2 |
-| Square | 4 | 3 |
-| PayPal | 2 | 4 |
-| Venmo | 2 | 5 |
-| Stripe | 1 | 6 |
+| 1 | Toast | 6 |
+| 2 | Clover | 4 |
+| 3 | Square | 4 |
+| 4 | PayPal | 2 |
+| 5 | Venmo | 2 |
+| 6 | Stripe | 1 |
 
 
 ---
@@ -119,13 +113,14 @@ ORDER BY `facilitator_rank` ASC, `payment_facilitator` ASC
 **Status:** `COMPLETED`
 
 
-**Genie answer:** The overall merchant enrichment success rate is **73.76237623762376%**, based on the share of transactions with decision **MATCHED** out of all transactions in `gold_enrichment_results`. This means **73.76237623762376%** of transactions were successfully linked to a single canonical merchant.
+**Genie answer:** The overall merchant enrichment success rate is **73.83%**, based on the share of transactions with decision = **MATCHED** out of all transactions in `gold_enrichment_results`. This means **73.83%** of transactions were reliably linked to exactly one canonical merchant.
 
 
 **Generated SQL:**
 
 ```sql
-SELECT try_divide(100.0 * SUM(CASE WHEN `decision` = 'MATCHED' THEN 1 ELSE 0 END),COUNT(*)) AS `enrichment_success_rate` FROM `serverless_stable_iczfn0_catalog`.`febar`.`gold_enrichment_results`
+SELECT try_divide(100.0 * SUM(CASE WHEN `decision` = 'MATCHED' THEN 1 ELSE 0 END),COUNT(*)) AS `enrichment_success_rate`
+FROM `serverless_stable_iczfn0_catalog`.`febar`.`gold_enrichment_results`
 ```
 
 
@@ -133,7 +128,7 @@ SELECT try_divide(100.0 * SUM(CASE WHEN `decision` = 'MATCHED' THEN 1 ELSE 0 END
 
 | enrichment_success_rate |
 | --- |
-| 73.76237623762376 |
+| 73.82716049382716 |
 
 
 ---
@@ -143,7 +138,7 @@ SELECT try_divide(100.0 * SUM(CASE WHEN `decision` = 'MATCHED' THEN 1 ELSE 0 END
 **Status:** `COMPLETED`
 
 
-**Genie answer:** The merchant with the highest transaction volume is **IronWorks Fitness** (merchant ID **M01733**) in the **Fitness** category, with **14** total transactions. Based on the result shown, **IronWorks Fitness** is the top-volume merchant in `gold_merchant_metrics`.
+**Genie answer:** The merchant with the **highest transaction volume** is **IronWorks Fitness** (merchant ID **M01733**), in the **Fitness** category, with **14 total transactions** and **14 matched transactions**. In this result, **IronWorks Fitness** is the top-volume merchant and all **14 of 14** transactions were matched.
 
 
 **Generated SQL:**
@@ -155,6 +150,7 @@ WITH ranked_merchants AS (
     `merchant_name`,
     `merchant_category`,
     `total_transactions`,
+    `matched_transactions`,
     RANK() OVER (ORDER BY `total_transactions` DESC, `merchant_name` ASC) AS `volume_rank`
   FROM `serverless_stable_iczfn0_catalog`.`febar`.`gold_merchant_metrics`
   WHERE `merchant_name` IS NOT NULL
@@ -164,15 +160,16 @@ SELECT
   `merchant_id`,
   `merchant_name`,
   `merchant_category`,
-  `total_transactions`
+  `total_transactions`,
+  `matched_transactions`
 FROM ranked_merchants
 WHERE `volume_rank` = 1
-ORDER BY `merchant_name` ASC;
+ORDER BY `total_transactions` DESC, `merchant_name` ASC
 ```
 
 
 **Query result:**
 
-| merchant_id | merchant_name | merchant_category | total_transactions |
-| --- | --- | --- | --- |
-| M01733 | IronWorks Fitness | Fitness | 14 |
+| merchant_id | merchant_name | merchant_category | total_transactions | matched_transactions |
+| --- | --- | --- | --- | --- |
+| M01733 | IronWorks Fitness | Fitness | 14 | 14 |

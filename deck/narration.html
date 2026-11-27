@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Narration — Financial Transaction Data Enrichment Engine</title>
+<style>
+  @page{ size:letter; margin:0.9in 0.95in; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,'Helvetica Neue',Arial,'Segoe UI',sans-serif;
+        color:#14181f; font-size:12.5pt; line-height:1.55; margin:0; }
+  h2{ font-size:11.5pt; letter-spacing:.02em; margin:22px 0 9px; color:#0b1020;
+      border-bottom:1.5px solid #d8dee8; padding-bottom:5px; }
+  h2:first-of-type{ margin-top:0; }
+  p{ margin:0 0 10px; }
+  .doc-title{ font-size:16pt; font-weight:800; margin:0 0 2px; }
+  .doc-sub{ color:#5b6676; font-size:11pt; margin:0 0 6px; }
+  .note{ color:#5b6676; font-size:10.5pt; font-style:italic; }
+  b{ font-weight:700; }
+</style>
+</head>
+<body>
+
+<p class="doc-title">Speaker Narration</p>
+<p class="doc-sub">Financial Transaction Data Enrichment Engine — companion script to <b>pitch_deck.pdf</b></p>
+<p class="note">Volume and cost figures are illustrative planning assumptions, not customer facts or industry benchmarks. Quality figures are measured prototype results on a 400-record held-out set.</p>
+
+<h2>SLIDE 1 — OPENING | ~1:00</h2>
+<p>Good morning, and thank you for your time.</p>
+<p>I want to talk about a problem hidden inside everyday payment processing: knowing the actual merchant behind each card transaction.</p>
+<p>A bank can process millions of card transactions a month, but the merchant information that arrives is often messy and inconsistent. The same coffee shop or retailer can show up under several different descriptions.</p>
+<p>Our Financial Transaction Data Enrichment Engine turns those messy descriptors into trusted, standardized merchant identities. It combines generative AI, semantic search, governed data, and an analyst review step on the Databricks Data Intelligence Platform.</p>
+<p>The goal is simple: cut avoidable manual investigations, prevent incorrect merchant attribution, and give operations and analytics reliable merchant data.</p>
+<p>I'll cover the problem, the solution, the measured prototype results, and how we validate the value on your own data.</p>
+
+<h2>SLIDE 2 — THE OUTCOME | ~1:05</h2>
+<p>Let me start with the outcome, not the technology.</p>
+<p>In this illustrative operating model, the engine cuts manual investigation from about <b>4,000 analyst hours a month to about 940</b>.</p>
+<p>That reclaims roughly <b>3,000 analyst hours every month</b> — about <b>36,700 hours a year</b>.</p>
+<p>At an illustrative loaded rate of <b>$40 an hour</b>, that's about <b>$1.4M</b> in potential annual cost avoidance.</p>
+<p>Just as important: on our held-out evaluation set, every automatic match was correct — a <b>0% false-positive rate</b>.</p>
+<p>That's the point. We don't force a match on every transaction. We automate the clear cases and send uncertain ones to an analyst.</p>
+<p>The volume and cost figures are planning assumptions, not your numbers. The quality metrics are measured prototype results, which I'll come to.</p>
+
+<h2>SLIDE 3 — THE PROBLEM | ~1:05</h2>
+<p>Here's the problem in practice.</p>
+<p>Take a transaction from Sunshine Coffee Roasters in Larchmont, New York. Depending on how it's processed, the bank might receive "SQ Sunshine Coffee Roasters Larchmont," "Square Sunshine Coffee Larchmont," or "Sunshine Coffee #1234 Larchmont NY."</p>
+<p>To a person, these are clearly the same merchant. To downstream systems, they can look like different ones.</p>
+<p>A descriptor may carry a facilitator prefix, an abbreviation, a store number, a location, a truncated name, or a misspelling — and sometimes the location is missing entirely.</p>
+<p>When the merchant can't be identified reliably, the impact goes beyond messy data: merchant reporting fragments, disputes take longer, spend insights get inconsistent, and analysts investigate records that should resolve automatically.</p>
+<p>The engine's job is to identify the merchant from the evidence — and to recognize when the evidence isn't enough for a safe decision.</p>
+
+<h2>SLIDE 4 — COST OF THE STATUS QUO | ~1:05</h2>
+<p>Let's quantify the challenge using this business case.</p>
+<p>Start with <b>10M</b> transactions a month. Assume <b>15%</b> have unclear descriptors — about <b>1.5M</b> transactions.</p>
+<p>Assume <b>8%</b> of those need manual investigation — about <b>120,000</b> a month.</p>
+<p>At about <b>2 minutes</b> each, that's <b>4,000 analyst hours</b> every month.</p>
+<p>That's roughly <b>25 full-time analysts</b> identifying merchants from descriptions.</p>
+<p>This isn't a claim that every bank looks like this. It's a transparent model showing how small percentages become a big operational burden at scale.</p>
+<p>And manual effort grows with volume. The opportunity is to make resolution scalable without sacrificing data quality.</p>
+
+<h2>SLIDE 5 — THE SOLUTION | ~1:30</h2>
+<p>The solution is a four-step workflow: understand, shortlist, decide, and serve and learn.</p>
+<p><b>First, understand.</b> A generative AI model reads the raw descriptor and pulls out structured attributes — likely merchant name, facilitator, city, state, and store number — separating the merchant from the surrounding text.</p>
+<p><b>Second, shortlist.</b> Databricks Vector Search retrieves the <b>10</b> most relevant candidates from the governed merchant master, using semantic similarity rather than exact string matching — so abbreviations and variations still match.</p>
+<p><b>Third, decide.</b> An LLM judge weighs the descriptor, the extracted attributes, and the candidates — name, aliases, and location — and returns one of three answers: matched, no match, or ambiguous.</p>
+<p>That three-way decision is deliberate. If the evidence is weak, the engine doesn't guess; it sends the case to a human.</p>
+<p><b>Fourth, serve and learn.</b> The result is stored for operations, and analyst confirmations become reusable mappings — so a known descriptor skips the full AI workflow next time. That's also a cost saving: if a confirmed mapping exists, the engine returns it directly.</p>
+
+<h2>SLIDE 6 — PROVEN RESULTS | ~1:25</h2>
+<p>Now the quality results.</p>
+<p>We evaluated the prototype on <b>400</b> held-out transactions with known answers the engine never saw.</p>
+<p>Matching precision was <b>100%</b> — every automatic match was correct — with a <b>0% false-positive rate</b>.</p>
+<p><b>Recall@10 was 99.2%</b>: for almost every matchable transaction, the correct merchant was in the 10 candidates from Vector Search. That matters, because the judge can't pick the right merchant if retrieval misses it.</p>
+<p>Matching recall was <b>91.7%</b> — the share of matchable transactions resolved automatically.</p>
+<p>No-match accuracy was <b>100%</b> on the unknown-merchant cases — the engine correctly declined to assign a merchant.</p>
+<p>And <b>23.5%</b> of transactions were routed to manual review. That's by design: the goal is high-confidence automation with a controlled path for ambiguous cases — not 100% automation at any cost.</p>
+<p>These are encouraging prototype metrics on a 400-record set, not a guarantee of production performance. A value proof of concept on your own descriptors is the way to confirm them at your scale.</p>
+
+<h2>SLIDE 7 — QUANTIFIED IMPACT | ~1:10</h2>
+<p>Let's connect those quality results to the operating model.</p>
+<p>Today, the assumptions give <b>4,000 analyst hours</b> a month. We apply the measured <b>23.5%</b> review rate to the <b>120,000</b> transactions that would otherwise need investigation.</p>
+<p>That leaves about <b>28,200</b> for review — roughly <b>940 analyst hours</b> a month at 2 minutes each.</p>
+<p>So the workload drops from <b>4,000 hours to about 940</b> — a reduction of about <b>3,060 hours a month</b>, or about <b>36,700 a year</b>.</p>
+<p>At <b>$40</b> a loaded hour, that's about <b>$1.47M</b> a year, which we present as roughly <b>$1.4M</b> in illustrative annual cost avoidance.</p>
+<p>Think of it as reclaimed capacity. Whether it becomes a budget cut depends on how the bank uses it — reducing overtime, absorbing growth without new hires, or moving analysts to higher-value work.</p>
+<p>It's about <b>19 FTE</b> of freed capacity. You'd validate the real number with your own handling times, labor costs, and review patterns.</p>
+
+<h2>SLIDE 8 — VALUE FOR BOTH SPONSORS | ~1:05</h2>
+<p>The value is different but complementary for your two sponsors.</p>
+<p>For the <b>Chief Operating Officer</b>, it's operating efficiency: about <b>$1.4M</b> in annual cost avoidance, with capacity that scales through automation instead of headcount.</p>
+<p>There's also risk. Wrong merchant attribution flows into disputes, fraud analysis, and reporting. The prototype's <b>0% false-positive rate</b> is a promising signal — production thresholds and monitoring would be validated on your data.</p>
+<p>For the <b>Head of Payments Operations</b>, it's a smaller, more focused review queue. Analysts spend less time on routine cleanup and more on the genuinely hard cases.</p>
+<p>They stay in control — reviewing, approving, or correcting — and confirmed mappings get reused.</p>
+<p>And because the enriched data sits in governed tables with Genie, business users can ask questions in plain language — like which facilitators drive the most ambiguous descriptors — without writing SQL.</p>
+
+<h2>SLIDE 9 — HOW IT WORKS ON DATABRICKS | ~1:10</h2>
+<p>The solution brings data, AI, operational serving, analytics, and the app together on one platform.</p>
+<p><b>Lakeflow</b> ingests and curates transaction and merchant data through Bronze, Silver, and Gold layers.</p>
+<p><b>Unity Catalog</b> provides governance and a documented source of truth.</p>
+<p>The matching workflow combines <b>GenAI extraction, Vector Search retrieval, and the LLM judge</b> — with <b>MLflow</b> tracking model and prompt behavior and measuring quality against ground truth.</p>
+<p><b>Lakebase</b> is the operational store for results, reusable mappings, and the review queue.</p>
+<p>A <b>Databricks App</b> gives the operations team one place to enrich, monitor, and review.</p>
+<p>And <b>Genie</b> provides natural-language analytics over the governed Gold tables.</p>
+<p>The benefit: these capabilities are connected on one platform, instead of scattered across unrelated tools.</p>
+
+<h2>SLIDE 10 — WHERE WE ARE AND WHAT'S NEXT | ~1:10</h2>
+<p>This is a working end-to-end prototype, not just a diagram.</p>
+<p>It has ingested and governed <b>8,000</b> transactions and <b>2,425</b> merchants. The enrichment workflow runs through extraction, Vector Search, and the judge.</p>
+<p>The app is deployed, the analyst review loop works, Genie answers business questions on governed data, and quality is tracked in MLflow.</p>
+<p>The next step is to validate the business case on a sample of your own descriptors.</p>
+<p>We propose a <b>2-to-4-week</b> value proof of concept. First, agree on baseline metrics — descriptor volumes, current investigation rates, handling time, and your cost assumptions.</p>
+<p>Then we evaluate against a labeled sample of your descriptors, measuring precision, Recall@10, false-positive rate, no-match accuracy, review rate, latency, and inference cost.</p>
+<p>We tune confidence thresholds and facilitator coverage to your merchant mix. If results meet the agreed criteria, we plan live feeds, continuous enrichment, production governance, privacy controls, and monitoring.</p>
+<p>That lets you validate both the quality and the economics before a broader rollout.</p>
+
+<h2>SLIDE 11 — CLOSE | ~0:40</h2>
+<p>To close: the opportunity is to identify merchants more reliably, reclaim analyst capacity, and give the bank trusted merchant data.</p>
+<p>The approach is practical — AI to read the descriptor, Vector Search to find likely merchants, an LLM judge to decide on the evidence, and human review when it's uncertain.</p>
+<p>The illustrative case points to about <b>76%</b> less manual investigation and about <b>$1.4M</b> in annual cost avoidance. The prototype metrics are an encouraging start, with validation on your data as the next milestone.</p>
+<p>Our ask is simple: sponsor a <b>2-to-4-week</b> value proof of concept on a representative sample of your descriptors, and agree on the measures that define success.</p>
+<p>Identify every merchant with confidence. Reclaim your analysts. Trust the data behind your decisions.</p>
+<p>Thank you.</p>
+
+</body>
+</html>
